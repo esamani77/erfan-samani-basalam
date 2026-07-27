@@ -1,6 +1,12 @@
-const GameCard = ({ card, position, isFaceUp, onClick }) => {
+import { memo, useCallback } from "react";
+
+const GameCard = ({ card, position, isFaceUp, onCardClick }) => {
+  const handleClick = useCallback(() => {
+    onCardClick(card);
+  }, [onCardClick, card]);
+
   return (
-    <div className="card" onClick={onClick}>
+    <div className="card" onClick={handleClick}>
       <div className={`card-inner ${isFaceUp ? "is-flipped" : ""}`}>
         <div className="card-back">
           <p>{position + 1}</p>
@@ -13,4 +19,4 @@ const GameCard = ({ card, position, isFaceUp, onClick }) => {
   );
 };
 
-export default GameCard;
+export default memo(GameCard);

@@ -38,17 +38,26 @@ export function useMemoryGame() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [matchedIds, setMatchedIds] = useState(() => new Set());
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
 
   const [pairAttempts, setPairAttempts] = useState(0);
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [isGameStarted, setIsGameStarted] = useState(false);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [isGameWon, setIsGameWon] = useState(false);
+  const [result, setResult] = useState(null); // null | "won" | "lost"
+  const isGameOver = result !== null;
 
   const timerRef = useRef(null);
   const mismatchTimeoutRef = useRef(null);
   const previewTimeoutRef = useRef(null);
+
+  const stateRef = useRef();
+  stateRef.current = {
+    deck,
+    selectedIds,
+    matchedIds,
+    isPreviewing,
+    isGameStarted,
+    isGameOver,
+  };
 
   const stopTimer = useCallback(() => {
     clearInterval(timerRef.current);
@@ -87,8 +96,7 @@ export function useMemoryGame() {
   useEffect(() => {
     if (!isGameStarted || isGameOver) return;
     if (timeLeft <= 0) {
-      setIsGameOver(true);
-      setIsGameWon(false);
+      setResult("lost");
       stopTimer();
     }
   }, [timeLeft, isGameStarted, isGameOver, stopTimer]);
@@ -96,8 +104,7 @@ export function useMemoryGame() {
   useEffect(() => {
     if (!isGameStarted || isGameOver) return;
     if (pairAttempts >= MAX_MOVES) {
-      setIsGameOver(true);
-      setIsGameWon(false);
+      setResult("lost");
       stopTimer();
     }
   }, [pairAttempts, isGameStarted, isGameOver, stopTimer]);
@@ -107,13 +114,11 @@ export function useMemoryGame() {
     clearTimeout(mismatchTimeoutRef.current);
     clearTimeout(previewTimeoutRef.current);
     setIsGameStarted(false);
-    setIsGameOver(false);
-    setIsGameWon(false);
+    setResult(null);
     setSelectedIds([]);
     setMatchedIds(new Set());
     setPairAttempts(0);
     setTimeLeft(MAX_TIME);
-    setIsLocked(false);
     setIsPreviewing(false);
   }, [stopTimer]);
 
@@ -135,18 +140,27 @@ export function useMemoryGame() {
 
   const handleCardClick = useCallback(
     (card) => {
+      const {
+        deck: currentDeck,
+        selectedIds: currentSelected,
+        matchedIds: currentMatched,
+        isPreviewing: currentPreviewing,
+        isGameStarted: currentStarted,
+        isGameOver: currentOver,
+      } = stateRef.current;
+
       if (
-        !isGameStarted ||
-        isGameOver ||
-        isPreviewing ||
-        isLocked ||
-        matchedIds.has(card.id) ||
-        selectedIds.includes(card.id)
+        !currentStarted ||
+        currentOver ||
+        currentPreviewing ||
+        currentSelected.length === 2 ||
+        currentMatched.has(card.id) ||
+        currentSelected.includes(card.id)
       ) {
         return;
       }
 
-      const nextSelected = [...selectedIds, card.id];
+      const nextSelected = [...currentSelected, card.id];
       setSelectedIds(nextSelected);
 
       if (nextSelected.length !== 2) {
@@ -156,7 +170,7 @@ export function useMemoryGame() {
       setPairAttempts((prev) => prev + 1);
 
       const [firstId, secondId] = nextSelected;
-      const firstCard = deck.find((c) => c.id === firstId);
+      const firstCard = currentDeck.find((c) => c.id === firstId);
       const secondCard = card;
       const isMatch = firstCard?.value === secondCard.value;
 
@@ -166,8 +180,7 @@ export function useMemoryGame() {
           next.add(firstId);
           next.add(secondId);
           if (next.size === CARDS.length) {
-            setIsGameWon(true);
-            setIsGameOver(true);
+            setResult("won");
             stopTimer();
           }
           return next;
@@ -176,22 +189,11 @@ export function useMemoryGame() {
         return;
       }
 
-      setIsLocked(true);
       mismatchTimeoutRef.current = setTimeout(() => {
         setSelectedIds([]);
-        setIsLocked(false);
       }, MISMATCH_DELAY_MS);
     },
-    [
-      isGameStarted,
-      isGameOver,
-      isPreviewing,
-      isLocked,
-      matchedIds,
-      selectedIds,
-      deck,
-      stopTimer,
-    ]
+    [stopTimer]
   );
 
   const isCardFaceUp = useCallback(
@@ -204,7 +206,7 @@ export function useMemoryGame() {
     deck,
     isGameStarted,
     isGameOver,
-    isGameWon,
+    isGameWon: result === "won",
     timeLeft,
     movesLeft: MAX_MOVES - pairAttempts,
     isCardFaceUp,

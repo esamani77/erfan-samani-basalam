@@ -36,7 +36,7 @@ const GameSection = () => {
             card={card}
             position={position}
             isFaceUp={isCardFaceUp(card)}
-            onClick={() => handleCardClick(card)}
+            onCardClick={handleCardClick}
           />
         ))}
       </div>
