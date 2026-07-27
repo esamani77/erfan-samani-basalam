@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-export const MAX_MOVES = 10;
-export const MAX_TIME = 100;
+export const MAX_MOVES = 40;
+export const MAX_TIME = 120;
 const MISMATCH_DELAY_MS = 1000;
 const PREVIEW_DELAY_MS = 2000;
 
